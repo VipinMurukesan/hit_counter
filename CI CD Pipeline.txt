@@ -1,0 +1,648 @@
+https://learning.oreilly.com/library/view/the-docker-workshop/9781838983444/B15021_08_Final_SZ.xhtml#_idParaDest-162
+
+
+Skip to content
+O'Reilly
+home
+Home
+
+person
+Your O'Reilly
+chevron down
+ 
+answers
+Answers
+
+queue
+Explore
+chevron down
+  
+event
+Live Events
+chevron down
+  
+code
+Interactive
+chevron down
+ 
+certifications
+Certifications
+settings
+Settings
+edit group
+Support
+document
+Newsletters
+log out
+Sign Out
+7. Docker Storage
+8. CI/CD Pipeline
+9. Docker Swarm
+14h 12m remaining
+8. CI/CD Pipeline
+Overview
+
+This chapter introduces Continuous Integration and Continuous Delivery (CI/CD), the most crucial step before going to production. This is the intermediate stage between development and production. This chapter will demonstrate how Docker is a robust technology for CI and CD, and how easily it integrates with other widely used platforms. By the end of the chapter, you will be able to configure GitHub, Jenkins, and SonarQube and incorporate them to publish your images for production automatically.
+
+Introduction
+In previous chapters, you learned how to write docker-compose files and explored the networking and storage of the Services. In this chapter, you will learn how to integrate the various microservices of an application and test it as a whole.
+
+CI/CD stands for Continuous Integration and Continuous Delivery. Sometimes, CD is used for Continuous Deployment as well. Deployment here means making an application publicly accessible from a specific URL through an automated pipeline workflow, while delivery means making the application ready to be deployed. In this chapter, we will focus on the concept of CI/CD.
+
+This chapter discusses how Docker integrates into the CI/CD pipeline in step-by-step exercises. You will also learn how to install and run Jenkins as a Docker container. Jenkins is an open-source automation server. You can use it to build, test, deploy, and facilitate CI/CD by automating parts of software development. The installation of Jenkins is merely one Docker command. Installing Jenkins on Docker is more robust than installing it as an application, and it won't be tightly coupled to a specific operating system.
+
+Note
+
+If you do not have accounts on GitHub and Docker Hub, please create them. You can do so for free at the following links: www.github.com and http://hub.docker.com.
+
+What Is CI/CD?
+CI/CD is a method that helps application development teams to provide code changes to users more frequently and reliably. CI/CD introduces automation into the stages of code deployment.
+
+When several developers collaborate and contribute to the same application (each of them responsible for a certain microservice or fixing a specific bug), they use a code version control provider to aggregate the application using the latest code versions that the developers have uploaded and pushed. GitHub, Bitbucket, and Assembla are examples of version control systems. The developers and testers push the application code and Docker files to automation software to build, test, and deploy the CI/CD pipeline. Jenkins, Circle CI, and GitLab CI/CD are examples of such automation platforms.
+
+After passing the testing, a Docker image is built and published to your repository. These repositories can be either Docker Hub, your company's Docker Trusted Register (DTR), or Amazon Elastic Container Registry (ECR).
+
+In this chapter, as in Figure 8.1, we will use a GitHub repository for the code version control. Then, we will use Jenkins to build and publish the framework and Docker Hub as a registry.
+
+Figure 8.1: CI/CD pipeline
+Figure 8.1: CI/CD pipeline
+
+You must build the Docker image before the production stage since there is no build keyword in the docker-stack.yml file that is used in production. The image will then be deployed to production in an integrated and automated target environment. In production, the operations (or DevOps) people configure the orchestrators to pull the images from the registry. Kubernetes, Docker Swarm, and Google Kubernetes Engine are examples of production orchestrators and management services that can be used to pull images from the registry.
+
+To summarize, we have three main steps:
+
+Upload the code to GitHub.
+Create a project in Jenkins and enter the GitHub and Docker Hub credentials. Jenkins will automatically build the image and push it for you to the Docker Hub account. When you push the code to GitHub, Jenkins automatically detects, tests, and builds the image. If no errors are generated, Jenkins pushes the image to the registry.
+Verify that the image is on your Docker Hub account.
+In the next exercise, you will install Jenkins as a container that will be used to build the image. Jenkins is one of the most popular platforms for testing and is in great demand in the market. Jenkins has several project types. In this chapter, we will use the Freestyle project type.
+
+Note
+
+Please use touch command to create files and vim command to work on the file using vim editor.
+
+Exercise 8.01: Installing Jenkins as a Container
+In this exercise, you will install Jenkins, finish its setup, and install the preliminary plugins. You will install the Git and GitHub plugins that will be used throughout this chapter. Perform the following steps to successfully install Jenkins as a container:
+
+Run the following command to pull the Jenkins image:
+$docker run -d -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock jenkinsci/blueocean
+
+This results in an output similar to the following:
+
+Figure 8.2: Output of the docker run command
+Figure 8.2: Output of the docker run command
+
+Note
+
+There are many Jenkins images on Docker Hub. Feel free to pull any of them and play with the ports and shared volume, but pay attention to the deprecated images as the Jenkins official image is now deprecated for the Jenkins/Jenkins:lts image. So, read the documentation of the images carefully. However, do not worry if one does not work. It might not be your mistake. Look for another and follow the instructions of the documentation carefully.
+
+Open the browser and connect to the Jenkins service at http://localhost:8080.
+If it gives you an error message stating it cannot reach the Docker daemon, add Jenkins to the docker group using the following commands:
+
+$ sudo groupadd docker
+
+$ sudo usermod –aG docker jenkins
+
+Note
+
+If your machine's operating system is Windows, the localhost might not be resolved. Run the ipconfig command in Windows PowerShell. In the second section of the output, ipconfig displays the information of the switch network. Copy the IPv4 address, and use it instead of the localhost throughout the exercises.
+
+You can also get the IP address from Control Panel > Network and Sharing Center and then clicking on Details for your Ethernet or Wi-Fi connection.
+
+After installation, Jenkins will ask for an Administrator password to unlock it:
+
+Figure 8.3: Getting started with Jenkins
+Figure 8.3: Getting started with Jenkins
+
+Jenkins autogenerates a password for you to use to unlock the application. In the next step, you will see how to get this password.
+
+Run the docker container ls command to get the list of the currently running containers:
+$ docker container ls
+
+You will get the details of the container that is crafted from the jekinsci/blueocean image:
+
+CONTAINER ID IMAGE COMMAND CREATED
+
+  STATUS PORTS
+
+9ed51541b036 jekinsci/blueocean "/sbin/tini../usr/.." 5 minutes ago
+
+  Up 5 minutes 0.0.0.0:8080->8080/tcp, 5000/tcp
+
+Copy the container ID and run the docker logs command:
+$ docker logs 9ed51541b036
+
+At the end of the log file, you will find six lines of asterisks. The password will be in between them. Copy it and paste it in the browser:
+
+Figure 8.4: Output of the docker logs command
+Figure 8.4: Output of the docker logs command
+
+Select Install suggested plugins. Then, click Skip and continue as admin. Click Save and Finish:
+Figure 8.5: Installing plugins to customize Jenkins
+Figure 8.5: Installing plugins to customize Jenkins
+
+In the suggested plugins, there are Git and GitHub plugins that Jenkins will install automatically for you. You will need these plugins for all the coming exercises.
+
+Note
+
+In Exercise 8.04, Integrating Jenkins and Docker Hub, you will need to install more plugins so Jenkins can push the image to the Docker Hub registry. This will be discussed in detail later, as well as how to manage Jenkins plugins in a step-by-step lab.
+
+After installation, it will display Jenkins is ready!. Click Start using Jenkins:
+Figure 8.6: Setting up Jenkins
+Figure 8.6: Setting up Jenkins
+
+Click on Create a job to build the software project:
+Figure 8.7: Welcome page of Jenkins
+Figure 8.7: Welcome page of Jenkins
+
+The preceding screenshot verifies that you have successfully installed Jenkins on your system.
+
+In the next sections, we will follow the CI/CD pipeline in this chapter. The first step is uploading the code to GitHub and then integrating Jenkins with GitHub so that Jenkins can pull the code and build the image automatically. The final step will be to integrate Jenkins with the registry to push that image to the registry without any manual interference.
+
+Integrating GitHub and Jenkins
+After installing Jenkins, we will create our first job and integrate it with GitHub. In this section, as in Figure 8.8, we will focus solely on GitHub and Jenkins. Docker Hub will be discussed a little later.
+
+ Figure 8.8: Integrating GitHub and Jenkins
+Figure 8.8: Integrating GitHub and Jenkins
+
+We will use a simple Python application to count the number of hits on a website. Every time you refresh the page, the counter will increment, resulting in an increase in the number of hits on the website.
+
+Note
+
+The code files for the Getting Started application can be found at the following link: https://github.com/efoda/hit_counter.
+
+The application consists of four files:
+
+app.py: This is the Python application code. It uses Redis to keep track of the counts of the number of hits on a website.
+requirments.txt: This file contains the dependencies needed for the application to work properly.
+Dockerfile: This builds the image with the required libraries and dependencies.
+docker-compose.yml: It is essential to have the YAML file when two or more containers are working together.
+In this simple application, we also have two services, Web and Redis, as shown in Figure 8.9:
+
+Figure 8.9: The hit_counter application architecture
+Figure 8.9: The hit_counter application architecture
+
+If you do not know how to upload this application to your GitHub account, don't worry. The next exercise will guide you through this process.
+
+Exercise 8.02: Uploading the Code to GitHub
+You can use GitHub to save your code and projects. In this exercise, you will learn how to download and upload the code to GitHub. You can do that by forking the code on the GitHub website or pushing the code from Command Prompt. In this exercise, you will do it from Command Prompt.
+
+Perform the following steps to upload the code to GitHub:
+
+On the GitHub website, create a new empty repository with the name hit_counter. Open a terminal and clone the code by typing the following command:
+$ git clone https://github.com/efoda/hit_counter
+
+This results in an output similar to the following:
+
+Cloning into 'hit counter'...
+
+remote: Enumerating objects: 38, done.
+
+remote: Counting objects: 100% (38/38), done
+
+remote: Compressing objects: 100% (35/35), done
+
+remote: Total 38 (delta 16), reused 0 (delta 0), pack-reused 0
+
+Receiving object: 100% (38/38), 8.98 KiB | 2.25 MiB/s, done.
+
+Resolving deltas: 100% (16/16), done
+
+Verify that the code is downloaded to your local machine by listing the directories. Then, open the application directory:
+$ cd hit_counter
+
+~/hit_counter$ ls
+
+You will find the application files downloaded to your local machine:
+
+app.py docker-compose.yml Dockerfile README.md requirements.txt
+
+Initialize and configure Git:
+$ git init
+
+You should get output similar to the following:
+
+Reinitialized existing Git repository in
+
+/home/docker/hit_counter/.git/
+
+Enter your username and email:
+$ git config user.email "<you@example.com>"
+
+$ git config user.name "<Your Name>"
+
+Specify the names of the Git accounts, origin and destination:
+$ git remote add origin https://github.com/efoda/hit_counter.git
+
+fatal: remote origin already exists.
+
+$ git remote add destination https://github.com/<your Github Username>/hit_counter.git
+
+Add all the content in the current path:
+$ git add .
+
+You can also add a specific file instead of all the files by typing the following command:
+
+$ git add <filename>.<extension>
+
+Specify a commit message:
+$ git commit -m "first commit"
+
+This results in an output similar to the following:
+
+On branch master
+
+Your branch is up to date with 'origin/master'.
+
+nothing to commit, working tree clean
+
+Push the code to your GitHub account:
+$ git push -u destination master
+
+It will ask you for your username and password. Once you've logged in, the files will be uploaded to your GitHub repository:
+
+Figure 8.10: Pushing the code to GitHub 
+Figure 8.10: Pushing the code to GitHub
+
+Check your GitHub account. You will find the files are uploaded there.
+Now that we have finished the first step in the CI/CD pipeline and have uploaded the code to GitHub, we will integrate GitHub with Jenkins.
+
+Note
+
+Starting from this point and going forward, replace the GitHub username, efoda, with your username.
+
+Exercise 8.03: Integrating GitHub and Jenkins
+You installed Jenkins as a container in Exercise 8.01, Installing Jenkins as a Container. In this exercise, you will create a job in Jenkins and configure it with GitHub. You will check Jenkins' Output Console to verify that it has built the image successfully. You will then modify the Dockerfile on GitHub and ensure that Jenkins has detected the change in the Dockerfile and rebuilt the image automatically:
+
+Go back to Jenkins in the browser. Click on Create a job:
+Figure 8.11: Creating a job in Jenkins
+Figure 8.11: Creating a job in Jenkins
+
+Fill in the Enter an item name textbox by providing the name of the project. Click Freestyle project and then click OK:
+Figure 8.12: Selecting Freestyle project 
+Figure 8.12: Selecting Freestyle project
+
+You will see six tabs: General, Source Code Management, Build Triggers, Build Environment, Build, and Post-build Actions, as in Figure 8.13.
+
+In the General tab, select the Discard old builds option so that the old builds do not eat up your disk space. Jenkins will do the housekeeping for you as well:
+Figure 8.13: Selecting the Discard old builds option
+Figure 8.13: Selecting the Discard old builds option
+
+In the Source Code Management tab, select Git. In Repository URL, enter https://github.com/<your GitHub username>/hit_counter, as in Figure 8.14. If you do not have Git, check your plugins and download the Git plugin. We will talk about managing plugins in Exercise 8.04, Integrating Jenkins and Docker Hub:
+Figure 8.14: Entering the GitHub repository URL
+Figure 8.14: Entering the GitHub repository URL
+
+In the Build Triggers tab, select Poll SCM. This is where you specify how often you want Jenkins to perform the tests. If you enter H/5 with four asterisks and spaces in between each asterisk, this means that you want Jenkins to perform the test every minute, as in Figure 8.16. If you enter it as H * * * *, this means the polling will be done every hour. If you do it as H/15 * * * *, the polling will be done every 15 minutes. Click your mouse outside the textbox. If you entered the code correctly, Jenkins will show the message stating when it will execute the next job. Otherwise, it will display an error in red.
+Figure 8.15: Building triggers
+Figure 8.15: Building triggers
+
+Click the Build tab. Click Add build step. Select Execute shell, as in Figure 8.17:
+Figure 8.16: Selecting Execute shell
+Figure 8.16: Selecting Execute shell
+
+A textbox will be displayed. Write the following command:
+docker build -t hit_counter .
+
+Then click Save, as in Figure 8.17:
+
+Figure 8.17: Entering the docker build command in the Execute shell command box
+Figure 8.17: Entering the docker build command in the Execute shell command box
+
+A screen similar to the following screenshot should appear:
+
+Figure 8.18: Successful creation of the hit_count project
+Figure 8.18: Successful creation of the hit_count project
+
+Before doing anything further in Jenkins, check the images that you currently have in your host. In a terminal, run the docker images command to list the images:
+$docker images
+
+If you cleaned your lab before this chapter, you will have only the jenkinsci/blueocean image:
+
+REPOSITORY TAG IMAGE ID CREATED
+
+       SIZE
+
+jenkinsci/blueocean latest e287a467e019 Less than a second ago
+
+       562MB
+
+Go back to Jenkins. Click on Build Now from the menu on the left.
+Note
+
+In case you get the Permission Denied error while connecting to the Docker daemon, perform the following steps:
+
+1. If not already exists, add a Jenkins user to the docker host:
+
+$ sudo useradd jenkins
+
+2. Add the Jenkins user to the docker group:
+
+$ sudo usermod -aG docker jenkins
+
+3. Obtain the docker group ID from /etc/group that is, 998:
+
+$ sudo cat /etc/group | grep docker
+
+4. Use docker exec command to create a bash shell in the running Jenkins container:
+
+$ docker container ls
+
+$ docker exec -it -u root <CONTAINER NAME | CONTAINER ID> /bin/bash
+
+5. Edit the /etc/group file inside the Jenkins container:
+
+# vi /etc/group
+
+6. Replace the docker group ID with the ID obtained from the host, and add the Jenkins user to the docker group:
+
+docker:x:998:jenkins
+
+7. Save the /etc/group file and close the editor:
+
+:wq
+
+8. Exit from the Jenkins container:
+
+# exit
+
+9. Stop the Jenkins container:
+
+$ docker container ls
+
+$ docker container stop <CONTAINER NAME | CONTAINER ID>
+
+Note
+
+10. Restart the Jenkins container:
+
+$ docker container ls
+
+$ docker container start <CONTAINER NAME | CONTAINER ID>
+
+Now, the job will build successfully.
+
+Click on Back to Dashboard. The following screen will appear. In the bottom-left corner, you will see the Build Queue and Build Executor Status fields. You can see that one build has started with #1 beside it, as in Figure 8.19:
+Figure 8.19: Checking the Build Queue 
+Figure 8.19: Checking the Build Queue
+
+There is no success or failure of the build yet. When the build is done, its status will be displayed on the screen. After some time, you will observe that two builds have been done.
+
+Click on the small arrow beside #2 under the Last Success field. A drop-down menu will appear, as shown in the following figure. Select Console Output to check what Jenkins did automatically for us, as in Figure 8.20:
+Figure 8.20: Selecting Console Output 
+Figure 8.20: Selecting Console Output
+
+In Console Output, you will find that Jenkins executed the docker build command you entered in the Build step during project configuration:
+
+Scroll down to the bottom of Console Output to see the result of the execution. You will see that the image has been built successfully. You will also find the image ID and tag:
+
+Figure 8.21: Verifying that the image is built successfully
+Figure 8.21: Verifying that the image is built successfully
+
+Verify the image ID and tag from the terminal. Re-run the docker images command.
+$docker images
+
+You will find that the hit_counter image has been created for you. You will also find the python:3.7-alpine image as this is the base image in the Dockerfile and Jenkins has pulled it automatically:
+
+REPOSITORY TAG IMAGE ID
+
+  CREATED SIZE
+
+jenkinsci/blueocean latest e287a467e019
+
+  Less than a second ago 562MB
+
+hit_counter latest bdaf6486f2ce
+
+  3 minutes ago 227MB
+
+python 3.7-alpine 6a5ca85ed89b
+
+  2 weeks ago 72.5MB
+
+With this step, you can confirm that Jenkins was able to pull the files from your GitHub successfully.
+
+Now, you will make the desired changes in the GitHub code. But first, verify that you did not commit any changes to the code yet. Return to Jenkins, scroll up and click Back to Project in the left-hand menu at the top. Then click on Recent Changes, as in Figure 8.22:
+Figure 8.22: Selecting Recent Changes
+Figure 8.22: Selecting Recent Changes
+
+Jenkins will display that there are no changes in any of the builds, as you can see in the following figure:
+
+Figure 8.23: Verifying changes in the code
+Figure 8.23: Verifying changes in the code
+
+Go to GitHub and edit the Dockerfile by changing the base image's tag from 3.7-alpine to alpine only.
+You can also do the same from the terminal as before by editing the file using any text editor. Then run the git add and git push commands:
+
+$ git add Dockerfile
+
+$ git commit -m "editing the Dockerfile"
+
+$ git push -u destination master
+
+Scroll down and commit your changes to GitHub.
+Return to Jenkins. Remove the hit_counter and python:3.7-alpine images to make sure that Jenkins is not using previous local images:
+$ docker rmi hit_counter python:3.7-alpine
+
+Click Build Now again to start building the job instantly. Refresh the Recent Changes page. It will display a message stating that a change has occurred.
+If you click on the change that has occurred, it will forward you to GitHub, showing you the differences between the old code and the new code.
+
+Click back into the browser to return to Jenkins. Check Console Output again to see the base image that Jenkins has used:
+At the bottom, you will find that Jenkins built the image successfully.
+
+Go to the terminal and check the images again:
+$ docker images
+
+You will find that hit_counter and python:alpine are on the list:
+
+REPOSITORY TAG IMAGE ID
+
+  CREATED SIZE
+
+jenkinsci/blueocean latest e287a467e019
+
+  Less than a second ago 562MB
+
+hit_counter latest 6288f76c1f15
+
+  3 minutes ago 234MB
+
+<none> <none> 786bdbef6ea2
+
+  10 minutes ago 934MB
+
+python alpine 8ecf5a48c789
+
+  2 weeks ago 78.9MB
+
+Clean your lab for the next exercise by removing all the images listed except jenkinsci/blueocean:
+$ docker image rm hit_counter python:alpine 786
+
+In this exercise, you learned how to integrate Jenkins with GitHub. Jenkins was able to pull the code from GitHub automatically and build the image.
+
+In the next section, you will learn how to push this image to your registry without manual interference to complete your CI/CD pipeline.
+
+Integrating Jenkins and Docker Hub
+In this section, as in Figure 8.31, we will focus on the last step of our CI/CD pipeline, which is integrating Jenkins with Docker Hub. As we mentioned before, there are plenty of registries out there. We will use Docker Hub because it is free and easy to use. At your workplace, your company will probably have a private local registry. You will need to ask the operations or IT admins to create an account for you and grant you some privileges so that you are able to access the registry and push your images to it.
+
+ Figure 8.24: Integrating Jenkins and Docker Hub
+Figure 8.24: Integrating Jenkins and Docker Hub
+
+In the following exercise, you will learn how to integrate Jenkins with Docker Hub and how to push the image that Jenkins built in the previous exercise.
+
+Exercise 8.04: Integrating Jenkins and Docker Hub
+In this exercise, you will integrate Jenkins with Docker Hub and push that image to your repository. First, you will install the Docker, docker-build-step, and Cloudbees Docker Build and Publish plugins so that Jenkins can connect to Docker Hub. Then, you will learn how to enter your Docker Hub credentials in Jenkins so that Jenkins can access your Docker Hub account automatically and push your images to it. Finally, you will check your images in Docker Hub to verify that the pipeline was executed correctly. At the end of this exercise, you will verify that the image is successfully pushed to the repository by checking your Docker Hub account:
+
+Click on Manage Jenkins in the left-hand menu to install the plugins:
+Figure 8.25: Clicking on Manage Jenkins 
+Figure 8.25: Clicking on Manage Jenkins
+
+Click on Plugin Manager. Four tabs will appear. Click on the Available tab and select the Docker, docker-build-step, and Cloudbees Docker Build and Publish plugins:
+Figure 8.26: Installing the Docker, docker-build-step, and Cloudbees 
+Docker Build and Publish plugins
+Figure 8.26: Installing the Docker, docker-build-step, and Cloudbees Docker Build and Publish plugins
+
+Click Install without restart. After installation, check Restart Jenkins when installation is complete and no jobs are running.
+Jenkins will take an extended period of time to restart, depending upon your disk space, memory, and internet connectivity speed. Wait until it is done, and the dashboard is shown. Click on the project's name, that is, hit_count:
+Figure 8.27: Jenkins Dashboard showing the hit_count project
+Figure 8.27: Jenkins Dashboard showing the hit_count project
+
+Click Configure in the left-hand menu to modify the project configurations:
+Figure 8.28: The Configure option in the left-hand menu
+Figure 8.28: The Configure option in the left-hand menu
+
+Modify the details in the Build tab only. Click on it and select Add build step. A larger menu than the one you saw before will show up. If you see Docker Build and Publish in that menu, it verifies that your plugins were installed successfully. Click Docker Build and Publish:
+Figure 8.29: Selecting Docker Build and Publish from the menu 
+Figure 8.29: Selecting Docker Build and Publish from the menu
+
+In Registry Credentials, click Add. Then select Jenkins from the drop-down menu.
+A pop-up box will appear. Enter your Docker Hub username and password. Then, click Add:
+Figure 8.30: Adding Jenkins credentials
+Figure 8.30: Adding Jenkins credentials
+
+Now, in Registry Credentials, click the first drop-down menu and select the credentials that you entered in the previous step. Then, enter <your Docker Hub username>/<image name> in the Repository Name field. Remove the Execute Shell option that you entered in Exercise 8.02, Uploading the Code to GitHub, by clicking the Red X at the top right. Now, you will have only one build step, which is the Docker Build and Publish step. Click Save to save the new configuration:
+Figure 8.31: The Docker Build and Publish step
+Figure 8.31: The Docker Build and Publish step
+
+Click Build Now again in the left-hand menu and in the Build History option, follow the progress of the image build. It will have the same name that you specified in Repository Name in the previous step. Jenkins will add the docker build step by itself because you chose it from the plugins. If the image passed the build successfully, Jenkins will use your Docker credentials and automatically connect to Docker Hub or any registry you specify in Repository Name. Finally, Jenkins will push the new image automatically to your registry, which is your Docker Hub registry in this exercise.
+As a further check, while the image is being built and before it is done, go to the terminal and list the images you have using the docker images command:
+$ docker images
+
+Because you cleaned your lab at the end of the last exercise, you should find the jenkinsci/blueocean image only:
+
+REPOSITORY TAG IMAGE ID
+
+  CREATED SIZE
+
+jenkinsci/blueocean latest e287a467e019
+
+  Less than a second ago 562MB
+
+Also, check your Docker Hub account to verify whether the hit_counter image is built. You will not find the hit_counter image:
+
+Figure 8.32: Checking your Docker Hub
+Figure 8.32: Checking your Docker Hub
+
+If the job is successfully built, you will find a blue ball beside the image name. If it is a red ball, this means that there was an error. Now, click on the arrow beside the image name and select Console Output:
+Figure 8.33: Selecting Console Output
+Figure 8.33: Selecting Console Output
+
+As shown in the following image, you will find that Jenkins built the image successfully and pushed it to your Docker Hub:
+
+Figure 8.34: In Console Output, verify that Jenkins has built and pushed the image
+Figure 8.34: In Console Output, verify that Jenkins has built and pushed the image
+
+Go back to the terminal and rerun the docker images command to list the images:
+$ docker images
+
+You will find an image with <your Docker Hub Username>/hit_count:
+
+REPOSITORY TAG IMAGE ID
+
+  CREATED SIZE
+
+jenkinsci/blueocean latest e287a467e019
+
+  Less than a second ago 562MB
+
+engyfouda/hit_count latest 65e2179392ca
+
+  5 minutes ago 227MB
+
+<none> <none> cf4adcf1ac88
+
+  10 minutes ago 1.22MB
+
+python 3.7alpine 6a5ca85ed89b
+
+  2 weeks ago 72.5MB
+
+In the browser, refresh the Docker Hub page. You will find your image at the top; Jenkins pushed it for you automatically:
+Figure 8.35: Verifying that Jenkins has pushed the image to your Docker Hub automatically
+Figure 8.35: Verifying that Jenkins has pushed the image to your Docker Hub automatically
+
+In this exercise, we finished the last phase of our CI/CD pipeline and integrated Jenkins with Docker Hub. Jenkins pushed the image it built to Docker Hub. You also verified that the image was pushed correctly by checking the Docker Hub account.
+
+In the next activity, we will apply the same method of installing extra plugins to integrate Jenkins with SonarQube. SonarQube is another powerful tool that can analyze code and generate reports about its quality and detect bugs, code smells, and security vulnerabilities in a vast number of programming languages.
+
+Activity 8.01: Utilizing Jenkins and SonarQube
+Usually, you will be asked to evaluate the quality of your code before submitting it to testers. You can utilize Jenkins for further code inspection by generating reports about debugging bugs, code smells, and security vulnerabilities by adding the SonarQube plugin.
+
+In this activity, we will utilize Jenkins and the SonarQube plugin for our hit_count Python example.
+
+Steps:
+
+Install and run SonarQube in a container, as you did in Exercise 8.01, Installing Jenkins as a Container. Use the default port 9000.
+Install the SonarQube plugin in Jenkins. Log in to SonarQube using admin/admin and generate the authentication token. Do not forget to copy the token and keep it in a text file. You cannot retrieve the token after this step. If you lose your token, remove the SonarQube container, re-craft it from the SonarQube image as in step 1, and re-do the steps again.
+Restart Jenkins.
+In Jenkins, add SonarQube's authentication token to the Global Credentials domain as secret text.
+Integrate Jenkins with SonarQube by adjusting the Global System Configuration and the Configure System options.
+Modify the fields in the Build Environment tab by enabling the Prepare SonarQube scanner environment.
+Modify the Build step and add the Analysis Properties.
+In the browser, go to the SonarQube window, and check its report.
+The output should be like the following:
+
+Figure 8.36: The expected SonarQube output
+Figure 8.36: The expected SonarQube output
+
+Note
+
+The solution for this activity can be found via this link.
+
+In the next activity, you will integrate Jenkins and SonarQube with our Panoramic Trekking application.
+
+Activity 8.02: Utilizing Jenkins and SonarQube in the Panoramic Trekking Application
+The Panoramic Trekking Application also has a frontend and backend, like the hit_counter application. In this activity, you will create a new project in Jenkins that is linked to the Panoramic Trekking application on GitHub. Then, you will run SonarQube to get a detailed report about its bugs and security vulnerabilities, if the trekking application has any.
+
+Follow these steps to complete the activity:
+
+Create a new item called trekking in Jenkins.
+Select it as a FREESTYLE project.
+In the General tab, select Discard Old Builds.
+In Source Code Management, select GIT. Then enter the URL http://github.com/efoda/trekking_app.
+In Build Triggers, select Poll SCM and set it to be analyzing and testing every 15 minutes.
+In the Build tab, enter the Analysis properties code.
+Save and click Build Now.
+Check the report in the SonarQube tab in the browser.
+The output should look like the following at SonarQube:
+
+Figure 8.37: Expected output of Activity 8.02
+Figure 8.37: Expected output of Activity 8.02
+
+Note
+
+The solution for this activity can be found via this link.
+
+Summary
+This chapter has provided hands-on experience integrating your code using the CI/CD pipeline. CI helps developers to integrate code into a shared and easily accessible repository. CD helps developers to deliver the code stored in the repository to production. The CI/CD approach also helps to keep the product up to date with the latest technology and to provide the latest version to customers with a fast turnaround for new features and bug fixes.
+
+Once this chapter's defined three phases of the CI/CD pipeline are completed successfully, you will only need to focus on editing your code on GitHub. Jenkins will then be your automated assistant, and it will automatically handle the rest of the phases for you and make the images available for production.
+
+In the next chapter, you will learn about Docker swarm mode and how to perform service discovery, clustering, scaling, and rolling updates.
+
+table of contents
+search
+Settings
+queue
+
+back
+SupportSign Out
+©2021 O'REILLY MEDIA, INC. TERMS OF SERVICEPRIVACY POLICY
